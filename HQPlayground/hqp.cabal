@@ -39,7 +39,8 @@ library core
       HQP.PrettyPrint.PrettyOp,
       HQP.PrettyPrint.PrettyMatrix,
       Programs.QFT,
-      AST
+      AST,
+      Quantumize
 
     build-depends:  
         base,

@@ -6,3 +6,16 @@ data Exp =
   | OR Exp Exp
   | XOR Exp Exp 
   | NEG Exp
+  deriving (Show, Eq)
+
+elimORwXOR :: Exp -> Exp
+elimORwXOR (OR a b) = XOR (XOR a b) (AND a b)
+elimORwXOR (AND a b) = AND (elimORwXOR a) (elimORwXOR b)
+elimORwXOR (XOR a b) = XOR (elimORwXOR a) (elimORwXOR b)
+elimORwXOR exp = exp
+
+elimORwMorgan :: Exp -> Exp
+elimORwMorgan (OR a b) = NEG (AND (NEG a) (NEG b))
+elimORwMorgan (AND a b) = AND (elimORwMorgan a) (elimORwMorgan b)
+elimORwMorgan (XOR a b) = XOR (elimORwMorgan a) (elimORwMorgan b)
+elimORwMorgan exp = exp
