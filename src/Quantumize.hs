@@ -16,13 +16,11 @@ data Instr
   = InstrAND Register Register Register
   | InstrXOR Register Register Register
   | InstrNEG Register Register
-  | InstrReset Register
   | InstrCopy Register Register
   deriving(Show, Eq)
 
 data CompilerState = CompilerState {
   next :: Int,
-  free :: [Register],
   instrs :: [Instr]
 }
 
@@ -30,25 +28,14 @@ type Compiler = State CompilerState
 
 alloc :: Compiler Register
 alloc = do
-  CompilerState next free instrs <- get
-  case free of
-    [] -> do
-      put $ CompilerState (next + 1) free instrs
-      pure $ Ancilla next
-    q:qs -> do
-      put $ CompilerState next qs instrs
-      pure q
+  CompilerState next instrs <- get
+  put $ CompilerState (next + 1) instrs
+  pure $ Ancilla next
 
-emit :: Instr -> Compiler ()
-emit instr = do
+emit :: [Instr] -> Compiler ()
+emit toAdd = do
   cs <- get
-  put $ cs {instrs = instrs cs ++ [instr]}
-
-dealloc :: Register -> Compiler ()
-dealloc toFree = do
-  emit $ InstrReset toFree
-  cs <- get
-  put $ cs {free = free cs `union` [toFree]}
+  put $ cs {instrs = instrs cs ++ toAdd}
 
 compile' :: Exp -> Compiler Register
 compile' (Var n) = pure $ Input n
@@ -56,28 +43,23 @@ compile' (AND e1 e2) = do
   in1 <- compile' e1
   in2 <- compile' e2
   out <- alloc
-  emit $ InstrAND in1 in2 out
-  dealloc in1
-  dealloc in2
+  emit [InstrAND in1 in2 out]
   pure out
 compile' (OR e1 e2) = compile' $ elimORwXOR $ OR e1 e2
 compile' (XOR e1 e2) = do
   in1 <- compile' e1
   in2 <- compile' e2
   out <- alloc
-  emit $ InstrXOR in1 in2 out
-  dealloc in1
-  dealloc in2
+  emit [InstrXOR in1 in2 out]
   pure out
 compile' (NEG e) = do
   input <- compile' e
   out <- alloc
-  emit $ InstrNEG input out
-  dealloc input
+  emit [InstrNEG input out]
   pure out
 
 initialState :: CompilerState
-initialState = CompilerState { next = 0, free = [], instrs = [] }
+initialState = CompilerState { next = 0, instrs = [] }
 
 compile :: Exp -> ([Instr], Int)
 compile expr = (instrs result, next result)
@@ -85,12 +67,14 @@ compile expr = (instrs result, next result)
     (_, result) = runState compiler initialState
     compiler = do
       out <- compile' expr
-      emit $ InstrCopy out Output
-      dealloc out
+      CompilerState _ instrs <- get
+      emit [InstrCopy out Output]
+      emit $ reverse instrs
 
 type CircuitWidth = Int
 
 pow :: QOp -> Int -> QOp
+pow _ 0 = One
 pow op p = op <.> pow op (p-1)
 
 reorder :: (Int, Int) -> (Int, Int)
@@ -123,7 +107,5 @@ quantumize nm@(n, m) (instr : instrs) = operation ++ quantumize (n, m) instrs
         [Unitary $ cx width (registerToPos nm in1) (registerToPos nm out) <> cx width (registerToPos nm in2) (registerToPos nm out)]
       InstrNEG input output -> 
         [Unitary $ cx width (registerToPos nm input) (registerToPos nm output)]
-      InstrReset register ->
-        [Measure [registerToPos nm register], undefined]
       InstrCopy from to -> 
         [Unitary $ cx width (registerToPos nm from) (registerToPos nm to)]
