@@ -85,27 +85,30 @@ swap n (i0, j0) = Permute $ [0..i-1] ++ [j] ++ [i+1..j-1] ++ [i] ++ [j+1..n-1]
   where (i, j) = reorder (i0, j0)
 
 ccx :: CircuitWidth -> Int -> Int -> Int -> QOp
-ccx n i j k = swap n (i, k-2) <> swap n (j, k-1) <> pow I (k-3) <.> C (C X) <.> pow I (n - k) <> swap n (i, k-2) <> swap n (j, k-1)
+ccx n i j k =
+  swap n (i, 0) <> swap n (j, 1) <> swap n (k, 2) <> C (C X) <.> pow I (n - 3) <> swap n (i, 0) <> swap n (j, 1) <> swap n (k, 2) 
 
 cx :: CircuitWidth -> Int -> Int -> QOp
-cx n i j = swap n (i, j-1) <> pow I (j-2) <.> C X <.> pow I (n - j) <> swap n (i, j-1)
+cx n i j = 
+  swap n (i, 0) <> swap n (j, 1) <> C X <.> pow I (n - 2) <> swap n (i, 0) <> swap n (j, 1)
 
-registerToPos :: (Int, Int) -> Register -> Int
-registerToPos _ (Input i) = i
-registerToPos (n, _) (Ancilla i) = n + i
-registerToPos (n, m) Output = n + m
+registerToPos :: Int -> Register -> Int
+registerToPos _ Output = 0
+registerToPos _ (Input i) = i + 1
+registerToPos n (Ancilla i) = n + i
+
 
 quantumize :: (Int, Int) -> [Instr] -> Program
 quantumize _ [] = []
-quantumize nm@(n, m) (instr : instrs) = operation ++ quantumize (n, m) instrs
+quantumize (n, m) (instr : instrs) = operation ++ quantumize (n, m) instrs
   where
     width = n + m + 1
     operation = case instr of
       InstrAND in1 in2 out -> 
-        [Unitary $ ccx width (registerToPos nm in1) (registerToPos nm in2) (registerToPos nm out)]
+        [Unitary $ ccx width (registerToPos n in1) (registerToPos n in2) (registerToPos n out)]
       InstrXOR in1 in2 out -> 
-        [Unitary $ cx width (registerToPos nm in1) (registerToPos nm out) <> cx width (registerToPos nm in2) (registerToPos nm out)]
+        [Unitary $ cx width (registerToPos n in1) (registerToPos n out) <> cx width (registerToPos n in2) (registerToPos n out)]
       InstrNEG input output -> 
-        [Unitary $ cx width (registerToPos nm input) (registerToPos nm output)]
+        [Unitary $ cx width (registerToPos n input) (registerToPos n output)]
       InstrCopy from to -> 
-        [Unitary $ cx width (registerToPos nm from) (registerToPos nm to)]
+        [Unitary $ cx width (registerToPos n from) (registerToPos n to)]
