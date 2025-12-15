@@ -22,7 +22,8 @@ executable SATQ
                       Parser,
                       Quantumize,
                       Grovers,
-                      ProgramInversion
+                      ProgramInversion,
+                      Macros
     -- other-extensions:
     build-depends:    base ^>=4.18.2.1,
                       hqp,

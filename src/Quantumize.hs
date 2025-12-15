@@ -1,8 +1,9 @@
-module Quantumize where
+module Quantumize(compile, quantumize) where
 
 import AST
 import Control.Monad.State
 import HQP.QOp.Syntax
+import Macros
 
 data Register
   = Input Int
@@ -70,27 +71,6 @@ compile expr = (instrs result, next result)
       CompilerState _ instrs <- get
       emit [InstrCopy out Output]
       emit $ reverse instrs
-
-type CircuitWidth = Int
-
-pow :: QOp -> Int -> QOp
-pow _ 0 = One
-pow op p = op <.> pow op (p-1)
-
-reorder :: (Int, Int) -> (Int, Int)
-reorder (i, j) = if i > j then (j, i) else (i, j)
-
-swap :: CircuitWidth -> (Int, Int) -> QOp
-swap n (i0, j0) = Permute $ [0..i-1] ++ [j] ++ [i+1..j-1] ++ [i] ++ [j+1..n-1]
-  where (i, j) = reorder (i0, j0)
-
-ccx :: CircuitWidth -> Int -> Int -> Int -> QOp
-ccx n i j k =
-  swap n (i, 0) <> swap n (j, 1) <> swap n (k, 2) <> C (C X) <.> pow I (n - 3) <> swap n (i, 0) <> swap n (j, 1) <> swap n (k, 2) 
-
-cx :: CircuitWidth -> Int -> Int -> QOp
-cx n i j = 
-  swap n (i, 0) <> swap n (j, 1) <> C X <.> pow I (n - 2) <> swap n (i, 0) <> swap n (j, 1)
 
 -- register name to qubit number
 registerToPos :: Int -> Register -> Int
