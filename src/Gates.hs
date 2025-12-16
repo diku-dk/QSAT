@@ -1,10 +1,14 @@
 module Gates where
 
+type QubitPos = Int
+
 data SingleGate
   = I | X | Y | Z | H
+  deriving(Show)
 
 data Gate 
-  = Only SingleGate
-  | Ctrl Int SingleGate
+  = Only QubitPos SingleGate
+  | Ctrl [QubitPos] QubitPos SingleGate
+  deriving(Show)
 
-newtype Program = Program [Gate]
+type Program = [Gate]

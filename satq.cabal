@@ -26,12 +26,15 @@ executable SATQ
                       ProgramInversion,
                       Macros,
                       Eval,
-                      Gates
+                      Gates,
+                      LinAlg
     -- other-extensions:
     build-depends:    base ^>=4.18.2.1,
                       hqp,
                       mtl,
-                      random
+                      random,
+                      hmatrix,
+                      vector
     hs-source-dirs:   exe,
                       src
     default-language: GHC2021

@@ -1,8 +1,6 @@
 module ProgramInversion where
 
 import HQP
-import Programs.QFT
-import qualified HQP.QOp.MatrixSemantics as MatSem
 import Data.List (elemIndex)
 import Data.Maybe (fromJust)
 
