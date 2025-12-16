@@ -7,6 +7,8 @@ import Numeric.LinearAlgebra
 newtype Qubit = Qubit (Vector (Complex Double))
   deriving newtype (Show, Num)
 
+-- wrote some constructors and utility functions for Qubit 
+-- because I don't want to use hmatrix directly in Eval Module
 qubit :: Complex Double -> Complex Double -> Qubit
 qubit a b = Qubit (2 |> [a, b])
 
@@ -28,6 +30,7 @@ ii = 0 :+ 1
 -- toQubit :: Vector (Complex Double) -> Qubit
 -- toQubit v = Qubit (v ! 0) (v ! 1)
 
+-- evaluates the effect of a single gate on a single qubit useing Matrix Semantics (I copied this from James)
 evalSingle  :: SingleGate -> Qubit -> Qubit
 evalSingle gate (Qubit qb) = Qubit $ mat #> qb
   where
