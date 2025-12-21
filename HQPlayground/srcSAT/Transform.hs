@@ -132,7 +132,7 @@ buildDAG exp = runState (buildDAG' exp)
             case exp' of
                 AND exp1 exp2 -> buildInternalNode N_And exp1 exp2
                 XOR exp1 exp2 -> buildInternalNode N_Xor exp1 exp2
-                e@(OR _ _) -> buildDAG' $ xorReduc e
+                e@(OR _ _) -> buildDAG' $ orToXor e
                 Var i -> do
                     let newNode = N_Var i
                     addNode newNode
