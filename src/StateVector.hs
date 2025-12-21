@@ -3,6 +3,7 @@ module StateVector where
 import LinAlg
 
 import Data.Vector as V
+import Data.List as L
 
 import Eval
 
@@ -20,3 +21,11 @@ tensorToStateVector (PT {Eval.scalar = s, qbs} : tl) =
         mul' (_:tl) res = mul' tl res
         
 tensorToStateVector _ = 0 |> []
+
+toBin 0 = "0"
+toBin 1 = "1"
+toBin n = 
+    if n `mod` 2 == 1 then  toBin (n `div` 2) Prelude.++ "1"
+    else toBin (n `div` 2)  Prelude.++ "0"
+
+ppSV v = fst $ L.foldl (\(s, n) e -> (s Prelude.++ toBin n Prelude.++ ": " Prelude.++ show e Prelude.++ "\n", n+1)) ("", 0) $ NL.toList v
