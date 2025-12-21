@@ -4,9 +4,9 @@ import Programs.QFT
 import Macros
 import Gates
 
--- make oracle a phase oracle (flip sign if solution)
-prepareOracle :: CircuitWidth -> Program
-prepareOracle width = map (\i -> Ctrl [0] i X) [1..width-1]
+-- make oracle a phase oracle (flip sign if solution) WRONG
+-- prepareOracle :: CircuitWidth -> Program
+-- prepareOracle width = map (\i -> Ctrl [0] i X) [1..width-1]
 
 -- diffussion step (reflect across the equal superposition vector)
 diffusion :: CircuitWidth -> Program
@@ -14,7 +14,7 @@ diffusion width = pow H width ++ pow X width ++ [Ctrl [0..width-2] (width-1) Z] 
 
 -- grovers algorithm (n should be equal to floor(sqrt(N/M)), find M using the quantum counting algorithm)
 grovers :: CircuitWidth -> Program -> Int -> Program
-grovers width oracle n = pow H width ++ concat (replicate n (oracle ++ prepareOracle width ++ diffusion width))
+grovers width oracle n = pow H width ++ concat (replicate n (oracle ++ diffusion width))
 
 -- quantum counting algorithm
 countQ :: CircuitWidth -> Program -> Int -> Program

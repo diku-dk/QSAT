@@ -2,13 +2,14 @@
 module Eval where
 
 import Gates
-import LinAlg
+import LinAlg (evalSingle, qfst, qsnd, qubit, ApproxEq(..), C, Qubit, setQubit)
+import qualified LinAlg as LA
 import qualified Data.Vector as V
 import Macros
 
 -- type definations
 
-data PureTensor = PT {scalar :: CC, qbs :: V.Vector Qubit}
+data PureTensor = PT {scalar :: C, qbs :: V.Vector Qubit}
   deriving(Show)
 
 -- utility functions for pure tensors
@@ -24,7 +25,7 @@ data PureTensor = PT {scalar :: CC, qbs :: V.Vector Qubit}
 (PT _ vec) ! i = vec V.! i
 
 -- multiples by scalar
-(*^) :: CC -> PureTensor -> PureTensor
+(*^) :: C -> PureTensor -> PureTensor
 alpha *^ (PT z vec) = PT (alpha * z) vec
 
 instance ApproxEq PureTensor where
@@ -53,10 +54,24 @@ evalGate gate = fixpoint tensorSimp . concatMap (evalTerm gate)
 -- evaluates a gate on a pure tensor, using LinAlg Module
 evalTerm :: Gate -> PureTensor -> Tensor
 evalTerm (Only pos gate) qbs = pure $ qbs // [(pos, evalSingle gate)]
+evalTerm (Ctrl [ctrl] target gate) qbs =
+  if qfst (qbs ! ctrl) == 0 -- if the <0|ctrl> = 0, invoke simp rule 5
+    then [qbs // [(target, evalSingle gate)]]
+  else 
+    let 
+      targetVal = qbs ! target
+      targetVal' = evalSingle gate targetVal
+    in case targetVal' LA./^ targetVal of
+      Just quotient -> [qbs // [(ctrl, setQubit id (quotient *))]] -- if G(target) = quotient * target, invoke simp rule 7
+      Nothing -> case qsnd (qbs ! ctrl) of
+          0 -> [qbs] -- if <1|ctrl> = 0, invoke simp rule 5
+          beta -> [qbs, correction] -- otherwise, use correction term as normal
+            where 
+              targetUpdate q = evalSingle gate q - q
+              correction = (beta *^ qbs) // [(ctrl, const (qubit 0 1)), (target, targetUpdate)]
+
 evalTerm (Ctrl ctrls target gate) qbs =
-  if all (~=0) ([qfst (qbs ! i) | i <- ctrls])
-  then [qbs // [(target, evalSingle gate)]] -- if the all the control have qfst q = 0, the just apply G on target
-  else case product $ [qsnd (qbs ! i) | i <- ctrls] of
+  case product $ [qsnd (qbs ! i) | i <- ctrls] of
     0 -> [qbs] -- if beta = 0, there is no correction
     beta -> [qbs, correction] -- calculate correction for non-zero beta
       where
@@ -69,7 +84,8 @@ tensorSimp tensor = f tensor simpUpdates
   where
     size = length tensor
     simpUpdates = [(pureTensorSimp (tensor !! i) (tensor !! j), i, j) | i <- [0..size - 1], j <- [i+1..size-1]]
-    -- the list is [result, i, j] where i, j are every pair of puretensors and result is what the two tensors can be simplified to (or Nothing oif they can't be similfied)
+    -- the list is [result, i, j] where i, j are every pair of puretensors
+    --  and result is what the two tensors can be simplified to (or Nothing oif they can't be similfied)
     f :: Tensor -> [(Maybe PureTensor, Int, Int)] -> Tensor
     -- f goes through simpUpdates for a successful rewrite and applies the first one it see, then exits
     f t [] = t
@@ -87,7 +103,7 @@ pureTensorSimp pt1@(PT z1 v1) pt2@(PT z2 v2) =
         -- if the puretensors are equal up to a scalar, then just sum the scalars (rule 3)
       1 -> do
         firstFalseIndex <- V.findIndex not isEq
-        quotient <- (pt2 ! firstFalseIndex) /^ (pt1 ! firstFalseIndex)
+        quotient <- (pt2 ! firstFalseIndex) LA./^ (pt1 ! firstFalseIndex)
         Just $ PT (z1 + quotient * z2) v1
         -- if the puretensors are equal up to a scalar except for one factor. 
         -- Then we see if the factor in question are equal up to a scalar k. If so, factor k to the front and then sum the scalars.
