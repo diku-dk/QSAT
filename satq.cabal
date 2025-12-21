@@ -15,10 +15,19 @@ extra-doc-files:    CHANGELOG.md
 common warnings
     ghc-options: -Wall
 
-executable SATQ
+library
     import:           warnings
-    main-is:          SAT.hs
-    other-modules:    AST,
+    hs-source-dirs:   src, tests
+    -- other-extensions:
+    build-depends:    base ^>=4.18.2.1,
+                      hqp,
+                      mtl,
+                      random,
+                      hmatrix,
+                      vector,
+                      tasty,
+                      tasty-hunit
+    exposed-modules:  AST,
                       Generator,
                       Parser,
                       Quantumize,
@@ -27,9 +36,16 @@ executable SATQ
                       Macros,
                       Eval,
                       Gates,
-                      LinAlg
+                      LinAlg,
+                      Eval_Tests
+    default-language: GHC2021
+
+executable SATQ
+    import:           warnings
+    main-is:          SAT.hs
     -- other-extensions:
     build-depends:    base ^>=4.18.2.1,
+                      satq,
                       hqp,
                       mtl,
                       random,
@@ -38,3 +54,11 @@ executable SATQ
     hs-source-dirs:   exe,
                       src
     default-language: GHC2021
+
+test-suite tests
+    type: exitcode-stdio-1.0
+    main-is: runtests.hs
+    build-depends:
+        base
+      , tasty
+      , satq
