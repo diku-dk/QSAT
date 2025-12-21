@@ -4,7 +4,6 @@ import Data.Map
 import Control.Monad.State
 import Prelude hiding (id)
 import Data.Set (Set, insert, empty)
-import qualified Control.Applicative as Set
 
 orToXor :: Exp -> Exp
 orToXor (OR a b) = XOR (XOR a b) (AND a b)
@@ -66,10 +65,10 @@ transform f e =
 type NodeID = Int
 
 data Node =
-      N_Var Int
-    | N_And (NodeID, NodeID)
-    | N_Xor (NodeID, NodeID)
-    | N_Neg NodeID
+      NodeVar Int
+    | NodeAnd (NodeID, NodeID)
+    | NodeXor (NodeID, NodeID)
+    | NodeNeg NodeID
     deriving (Show, Eq, Ord)
 
 data DAGState = DAGState {
@@ -87,18 +86,20 @@ nxtId = do
     put $ dag {nxtid = nxtid dag + 1}
     pure (nxtid dag + 1)
 
+addNode :: Node -> DAGBuilder ()
 addNode node = do
     dag <- get
     case Data.Map.lookup node (nodes dag) of
         Just _ -> pure ()
         Nothing -> do
             id <- nxtId
-            dag <- get
+            dag' <- get
             put $ dag {
-                nodes = Data.Map.insert node id (nodes dag),
-                incomingNodes = Data.Map.insert node Data.Set.empty (incomingNodes dag)
+                nodes = Data.Map.insert node id (nodes dag'),
+                incomingNodes = Data.Map.insert node Data.Set.empty (incomingNodes dag')
             }
 
+getID :: Node -> DAGBuilder NodeID
 getID node = do
     dag <- get
     case Data.Map.lookup node (nodes dag) of
@@ -110,9 +111,8 @@ addIncomingNode fromNode toNode = do
     dag <- get
     put $ dag {incomingNodes = Data.Map.adjust (Data.Set.insert fromNode) toNode (incomingNodes dag)}
 
--- Do collapse
--- buildDAG :: Exp -> DAGState  
-buildDAG exp = runState (buildDAG' exp)
+buildDAG :: Exp -> (Node, DAGState)
+buildDAG e = runState (buildDAG' e)
                         (DAGState {nodes = Data.Map.empty, incomingNodes = Data.Map.empty, leafs = [], nxtid = 0})
     where
         buildInternalNode constructor exp1 exp2 = do
@@ -130,11 +130,11 @@ buildDAG exp = runState (buildDAG' exp)
 
         buildDAG' exp' =
             case exp' of
-                AND exp1 exp2 -> buildInternalNode N_And exp1 exp2
-                XOR exp1 exp2 -> buildInternalNode N_Xor exp1 exp2
-                e@(OR _ _) -> buildDAG' $ orToXor e
+                AND exp1 exp2 -> buildInternalNode NodeAnd exp1 exp2
+                XOR exp1 exp2 -> buildInternalNode NodeXor exp1 exp2
+                e'@(OR _ _) -> buildDAG' $ orToXor e'
                 Var i -> do
-                    let newNode = N_Var i
+                    let newNode = NodeVar i
                     addNode newNode
                     pure newNode
                 _ -> undefined
