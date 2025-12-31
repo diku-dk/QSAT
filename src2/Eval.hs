@@ -1,15 +1,16 @@
 module Eval where
 
-import Comp
+import Gates2
 import Data.Complex
-import Control.Monad.ST
+import Data.Vector (Vector)
 import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as MV
 
-type Amplitude   = Complex Double
-type Qubit       = (Amplitude,Amplitude)
-type PureTensor  = (Amplitude,V.Vector Qubit)
-type TensorTerm  = [PureTensor]
+type Amplitude  = Complex Double
+type Qubit      = (Amplitude,Amplitude)
+type PureTensor = Vector Qubit
+type TensorTerm = (Amplitude,PureTensor)
+type TensorSum  = [TensorTerm]
 
 eps :: Amplitude
 eps = 0.00001 :+ 0.0001
@@ -26,34 +27,23 @@ zero = 0 :+ 0
 one :: Amplitude
 one = 1 :+ 0
 
+zeroTensor :: Int -> TensorTerm
+zeroTensor n = (one,V.replicate n (one,zero))
+
+-- Quickly deprecate this, as some effects can be retracted from the qubits into the scalar (e.g. Z).
 evalOp :: Op -> Qubit -> Qubit
 evalOp I (a0,a1) = (a0,a1)  -- Identity.
 evalOp X (a0,a1) = (a1,a0)  -- X swaps amplitudes.
-evalOp Z (a0,a1) = (a0,-a1) -- Z flips sign of |1>.
+evalOp Z (a0,a1) = (a0,if a1 ~= zero then a1 else -a1) -- Z flips sign of |1>.
 evalOp Y (a0,a1) = (-i * a1, i * a0)  -- Y does Y things.
 evalOp H (a0,a1) =  
   ((a0 + a1) / sqrt 2,
    (a0 - a1) / sqrt 2)
 
-baseZero :: Int -> ST s (MV.MVector s Qubit)
-baseZero size = do
-  MV.replicate size (zero,zero)
-
-evalQP :: QP -> Int -> V.Vector Qubit
-evalQP qp size = runST $ do
-  v1 <- baseZero size
-  v2 <- baseZero size
-  V.freeze
-
---evalGate :: Gate -> [MV.MVector s Qubit] -> ST s ()
---evalGate (Single op pos) vec = do
---  MV.modify vec (\q -> evalOp op q) pos
---evalGate (C idx op pos) vec =
---  case idx of
---    (i:[]) -> do 
---      (ca,cb) <- MV.read vec i
---      case (ca ~= zero,cb ~= zero) of
---        (True,_) -> pure ()
---        (_,True) -> MV.modify vec (\q -> evalOp op q) pos
---        _        -> undefined
---    (i:ii) -> undefined
+evalGate :: Gate -> TensorSum -> TensorSum
+evalGate (Single op pos) tsum = 
+  map (\(amp,vec) -> 
+    (amp,V.modify (\v -> MV.modify v (\v' -> evalOp op v') pos) vec)
+  ) tsum
+evalGate (CZ pos) tsum = undefined
+evalGate (C _ _ _) _ = undefined -- unused for now.

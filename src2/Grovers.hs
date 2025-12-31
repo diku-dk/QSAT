@@ -1,6 +1,6 @@
 module Grovers where
 
-import Comp
+import Gates
 
 pow :: Op -> Int -> QP
 pow op i = map (Single op) [0..i-1]
