@@ -1,9 +1,8 @@
 module Comp where
 
-import Gates2
+import Gates
 import ANF
 import AST
-import Parser
 import Data.List (nub)
 
 buildPhase :: ANF -> QP

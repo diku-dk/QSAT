@@ -19,13 +19,13 @@ executable SATQ
     import:           warnings
     main-is:          SAT.hs
     other-modules:    AST,
+                      ANF,
                       Generator,
                       Parser,
                       Quantumize,
                       Grovers,
-                      ProgramInversion,
-                      Macros,
                       Eval,
+                      PhaseEval,
                       Gates,
                       LinAlg,
                       Comp,
@@ -39,5 +39,4 @@ executable SATQ
                       containers
     hs-source-dirs:   exe,
                       src,
-                      src2
     default-language: GHC2021

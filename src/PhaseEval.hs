@@ -1,4 +1,4 @@
-module Eval where
+module PhaseEval where
 
 import Gates
 import Data.Complex
@@ -40,11 +40,10 @@ evalOp H (a0,a1) =
   ((a0 + a1) / sqrt 2,
    (a0 - a1) / sqrt 2)
 
-evalGate :: Gate -> TensorSum -> TensorSum
+evalGate :: QGate -> TensorSum -> TensorSum
 evalGate (Single op pos) tsum = 
   map (\(amp,vec) -> 
-    (amp,V.modify (\v -> MV.modify v (\v' -> evalOp op v') pos) vec)
-  ) tsum
+    (amp,V.modify (\v -> MV.modify v (\v' -> evalOp op v') pos) vec)) tsum
 evalGate (CZ pos) tsum =
   concatMap applyCZTerm tsum
   where
@@ -70,8 +69,7 @@ evalGate (CZ pos) tsum =
     forceOnes =
       V.modify $ \v ->
         mapM_ (\p -> MV.write v p (zero, one)) pos
-evalGate (C _ _ _) _ = undefined -- unused for now.
+evalGate (C _ _ _) _ = undefined -- unused in this interpretation.
 
 evalProgram :: QP -> Int -> TensorSum
 evalProgram qp n = foldl (flip evalGate) [(zeroTensor n)] qp
-
