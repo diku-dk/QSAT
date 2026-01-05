@@ -1,5 +1,5 @@
 {-# LANGUAGE DerivingStrategies #-}
-module LinAlg(Qubit, qubit, evalSingle, qfst, qsnd, ApproxEq(..), CC, (/^)) where
+module LinAlg(Qubit, qubit, evalSingle, qfst, qsnd, ApproxEq(..), C, (/^), (*^), setQubit) where
 
 import Gates
 import Numeric.LinearAlgebra
@@ -10,12 +10,10 @@ class ApproxEq a where
   (~=) :: a -> a -> Bool
   a ~= b = approxEq 1e-9 a b
 
-type CC = Complex Double
-
 instance ApproxEq Double where
   approxEq tolerence a b = abs (a - b) < tolerence
 
-instance ApproxEq CC where
+instance ApproxEq C where
   approxEq tolerence a b = magnitude (a - b) < tolerence
 
 showImag :: Double -> String
@@ -30,10 +28,10 @@ ppComplex (a :+ b)
   | b > 0     = show a ++ " + " ++ showImag b
   | otherwise = show a ++ " - " ++ showImag (-b)
 
-instance ApproxEq (Vector CC) where
+instance ApproxEq (Vector C) where
   approxEq tolerence v w = size v == size w && norm_2 (v - w) < tolerence
 
-newtype Qubit = Qubit (Vector CC)
+newtype Qubit = Qubit (Vector C)
   deriving newtype (Num, ApproxEq)
 
 instance Show Qubit where
@@ -41,35 +39,38 @@ instance Show Qubit where
 
 -- wrote some constructors and utility functions for Qubit 
 -- because I don't want to use hmatrix directly in Eval Module
-qubit :: CC -> CC -> Qubit
+qubit :: C -> C -> Qubit
 qubit a b = Qubit (2 |> [a, b])
 
-(*^) :: CC -> Qubit -> Qubit
+(*^) :: C -> Qubit -> Qubit
 z *^ (Qubit v) = Qubit $ scale z v
 
-(/^) :: Qubit -> Qubit -> Maybe CC
+(/^) :: Qubit -> Qubit -> Maybe C
 qb1 /^ qb2 =
   if (qfst qb1 / qfst qb2) == (qsnd qb1 / qsnd qb2)
     then Just $ qfst qb1 / qfst qb2
     else Nothing
 
-qfst :: Qubit -> CC
+qfst :: Qubit -> C
 qfst (Qubit v) = v ! 0
 
-qsnd :: Qubit -> CC
+qsnd :: Qubit -> C
 qsnd (Qubit v) = v ! 1
 
-ii :: CC
+setQubit :: (C -> C) -> (C -> C) -> Qubit -> Qubit
+setQubit f g qb = Qubit $ 2 |> [f (qfst qb), g (qsnd qb)]
+
+ii :: C
 ii = 0 :+ 1
 
--- toVector :: Qubit -> Vector (CC)
+-- toVector :: Qubit -> Vector (C)
 -- toVector (Qubit a b) = 2 |> [a, b]
 
--- toQubit :: Vector (CC) -> Qubit
+-- toQubit :: Vector (C) -> Qubit
 -- toQubit v = Qubit (v ! 0) (v ! 1)
 
 -- evaluates the effect of a single gate on a single qubit useing Matrix Semantics (I copied this from James)
-evalSingle  :: SingleGate -> Qubit -> Qubit
+evalSingle  :: Op -> Qubit -> Qubit
 evalSingle gate (Qubit qb) = Qubit $ mat #> qb
   where
     mat = case gate of

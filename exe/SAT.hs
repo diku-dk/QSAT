@@ -1,37 +1,27 @@
 module Main where
 
-import Parser
-import Quantumize
+import Comp
 import Grovers
-import Generator
-import Eval
-import Macros 
-import Gates
+import Parser
+import PhaseEval
 
 main :: IO ()
 main = 
   let 
       -- obtain input - substitute appropriate input stream later
-      example = "p & q | (123 & ~123) & ( (x ^ y) ^ z)"
-      n = 6
+      example = "(~p & q) | (t & ~p)"
 
       -- parse input
-      bexp = 
-        case parse example of
-          Right x  -> x
-          Left err -> error err
+      (bexp,n) = parseWithUnique example
 
-      -- quantumize boolean expression
-      (instrs,m) = compile bexp
-      qop = quantumize (n,m) instrs
+      -- create boolean (phase)oracle
+      oracle = phaseOracle bexp
 
       -- apply Grover's algorithm
-      width = n + m + 1
-      iterations = 1
-      groversCircuit = grovers width qop iterations
+      fullGrover = grover oracle n
 
-      -- ???
-      h = evalProgram (pow H width) (zero width)
-      result = evalByParts 1 qop h
+      -- ??? (evaluate grover on an empty state)
+      result = evalProgram fullGrover n
+
       -- profit
-   in result >>= pp
+   in putStrLn $ show result

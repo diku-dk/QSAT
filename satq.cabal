@@ -17,42 +17,28 @@ common warnings
 
 library
     import:           warnings
-    hs-source-dirs:   src, tests
-    -- other-extensions:
-    build-depends:    base ^>=4.18.2.1,
-                      hqp,
-                      mtl,
-                      random,
-                      hmatrix,
-                      vector,
-                      tasty,
-                      tasty-hunit
-    exposed-modules:  AST,
+    main-is:          SAT.hs
+    other-modules:    AST,
+                      ANF,
                       Generator,
                       Parser,
                       Quantumize,
                       Grovers,
-                      ProgramInversion,
-                      Macros,
                       Eval,
+                      PhaseEval,
                       Gates,
                       LinAlg,
-                      Eval_Tests
-    default-language: GHC2021
-
-executable SATQ
-    import:           warnings
-    main-is:          SAT.hs
+                      Comp,
+                      Transform
     -- other-extensions:
     build-depends:    base ^>=4.18.2.1,
-                      satq,
-                      hqp,
                       mtl,
                       random,
                       hmatrix,
-                      vector
+                      vector,
+                      containers
     hs-source-dirs:   exe,
-                      src
+                      src,
     default-language: GHC2021
 
 test-suite tests
