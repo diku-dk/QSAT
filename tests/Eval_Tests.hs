@@ -38,5 +38,12 @@ tests =
         let pt = PT 1 $ V.fromList [qubit 0.5 0.5, qubit 0.5 0.5]
             res = evalTerm (C [0] 1 X) pt
         in assertBool "Tensors not identical" $ compareTensors res [pt]
+      ),
+
+      testCase "𝛼 · (𝑞1 ⊗ . . . ⊗ 𝑞𝑛) + 𝛽 · (𝑞1 ⊗ . . . ⊗ 𝑞𝑛) = (𝛼 + 𝛽) · (𝑞1 ⊗ . . . ⊗ 𝑞𝑛)" (
+        let pt = [PT 1 $ V.fromList [qubit 0.5 0.5, qubit 0.5 0.5], PT 1 $ V.fromList [qubit 0.5 0.5, qubit 0.5 0.5]]
+            exptected = [PT 2 $ V.fromList [qubit 0.5 0.5, qubit 0.5 0.5]] 
+            res = evalProgram [C [0] 1 X] pt
+        in assertBool "Tensors not identical" $ compareTensors res exptected
       )
     ]
