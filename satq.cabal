@@ -27,7 +27,8 @@ executable SATQ
                       Macros,
                       Eval,
                       Gates,
-                      LinAlg
+                      LinAlg,
+                      Measure
     -- other-extensions:
     build-depends:    base ^>=4.18.2.1,
                       hqp,

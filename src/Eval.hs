@@ -54,25 +54,21 @@ evalGate gate = fixpoint tensorSimp . concatMap (evalTerm gate)
 -- evaluates a gate on a pure tensor, using LinAlg Module
 evalTerm :: Gate -> PureTensor -> Tensor
 evalTerm (Only pos gate) qbs = pure $ qbs // [(pos, evalSingle gate)]
-evalTerm (Ctrl [ctrl] target gate) qbs =
-  if qfst (qbs ! ctrl) == 0 -- if the <0|ctrl> = 0, invoke simp rule 5
-    then [qbs // [(target, evalSingle gate)]]
-  else 
-    let 
-      targetVal = qbs ! target
-      targetVal' = evalSingle gate targetVal
-    in case targetVal' LA./^ targetVal of
-      Just quotient -> [qbs // [(ctrl, setQubit id (quotient *))]] -- if G(target) = quotient * target, invoke simp rule 7
-      Nothing -> case qsnd (qbs ! ctrl) of
-          0 -> [qbs] -- if <1|ctrl> = 0, invoke simp rule 5
-          beta -> [qbs, correction] -- otherwise, use correction term as normal
-            where 
-              targetUpdate q = evalSingle gate q - q
-              correction = (beta *^ qbs) // [(ctrl, const (qubit 0 1)), (target, targetUpdate)]
+
+evalTerm (Ctrl ctrls target Z) qbs =
+  let pos = target : ctrls in
+    case product $ [qsnd (qbs ! i) | i <- pos] of
+      0 -> [qbs] -- if beta = 0, there is no correction
+      1 -> [(-1) *^ qbs]
+      beta -> [qbs, correction] -- calculate correction for non-zero beta
+        where
+          updates = repeat $ const $ qubit 0 1
+          correction = ((-2 * beta) *^ qbs) // zip pos updates
 
 evalTerm (Ctrl ctrls target gate) qbs =
   case product $ [qsnd (qbs ! i) | i <- ctrls] of
     0 -> [qbs] -- if beta = 0, there is no correction
+    1 -> [qbs // [(target, evalSingle gate)]]
     beta -> [qbs, correction] -- calculate correction for non-zero beta
       where
         targetUpdate q = evalSingle gate q - q

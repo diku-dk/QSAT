@@ -7,6 +7,7 @@ import Generator
 import Eval
 import Macros 
 import Gates
+import Measure
 
 main :: IO ()
 main = 
@@ -37,4 +38,4 @@ main =
       -- h = evalProgram (pow H width) (zero width)
       result = evalByParts 1 groversCircuit (zero width)
       -- profit
-   in result >>= pp
+   in print . vectorize =<< result
