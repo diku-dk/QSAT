@@ -6,6 +6,8 @@ import LinAlg (evalSingle, qfst, qsnd, qubit, ApproxEq(..), C, Qubit, setQubit, 
 import qualified LinAlg as LA
 import qualified Data.Vector as V
 import Macros
+import Data.Maybe(isJust)
+import Data.List(find)
 
 -- type definations
 
@@ -49,7 +51,7 @@ evalProgram program tensor = foldl (flip evalGate) tensor program
 
 -- distributes a gate over addition to all pure tensors in a tensor
 evalGate :: Gate -> Tensor -> Tensor
-evalGate gate = fixpoint tensorSimp . concatMap (evalTerm gate)
+evalGate gate = tensorSimp . concatMap (evalTerm gate)
 
 -- evaluates a gate on a pure tensor, using LinAlg Module
 evalTerm :: Gate -> PureTensor -> Tensor
@@ -76,19 +78,20 @@ evalTerm (Ctrl ctrls target gate) qbs =
         correction = (beta *^ qbs) // zip (target : ctrls) (targetUpdate : ctrlUpdates)
 
 tensorSimp :: Tensor -> Tensor
-tensorSimp tensor = f tensor simpUpdates
-  where
+tensorSimp tensor = 
+  let 
     size = length tensor
     simpUpdates = [(pureTensorSimp (tensor !! i) (tensor !! j), i, j) | i <- [0..size - 1], j <- [i+1..size-1]]
     -- the list is [result, i, j] where i, j are every pair of puretensors
-    --  and result is what the two tensors can be simplified to (or Nothing oif they can't be similfied)
-    f :: Tensor -> [(Maybe PureTensor, Int, Int)] -> Tensor
-    -- f goes through simpUpdates for a successful rewrite and applies the first one it see, then exits
-    f t [] = t
-    f t (update : updates) =
-      case update of
-        (Nothing, _, _) -> f t updates
-        (Just pt', i, j) -> pt' : deleteAtTwo (i, j) t
+    --  and result is what the two tensors can be simplified to (or Nothing if they can't be similfied)
+    firstSimp = find (\(a, _, _) -> isJust a) simpUpdates -- find the first available simplication
+  in
+    case firstSimp of
+      Nothing -> tensor -- if there is no simplification available, return the tensor
+      Just simp -> 
+        case simp of
+          (Just pt', i, j) -> tensorSimp (pt' : deleteAtTwo (i, j) tensor) -- if successfully applied simp rule, look for more simplications
+          (Nothing, _, _) -> tensor -- this case shouldn't be possible
 
 pureTensorSimp :: PureTensor -> PureTensor -> Maybe PureTensor
 pureTensorSimp pt1@(PT z1 v1) pt2@(PT z2 v2) =
@@ -103,6 +106,9 @@ pureTensorSimp pt1@(PT z1 v1) pt2@(PT z2 v2) =
         Just $ PT 1 (v1 V.// [(firstFalseIndex, z1 LA.*^ q1 + z2 LA.*^ q2)])
         -- if the puretensors are equal up to a scalar except for one entry k. then combine the entry using z1 * v1_i + z2 + v2_i 
       _ -> Nothing
+
+clearZero :: Tensor -> Tensor
+clearZero = filter (\(PT z _) -> not (z ~= 0))
 
 -- Utility Functions
 
