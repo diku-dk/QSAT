@@ -1,4 +1,4 @@
-import qualified Eval_Tests
+import qualified Tests
 import Test.Tasty (defaultMain, testGroup)
 
 main :: IO ()

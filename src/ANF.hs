@@ -56,3 +56,12 @@ normalizeAnf anf =
 -- double normalization may be needed in the future (unlikely)
 astToAnf :: Exp -> ANF
 astToAnf = distributeAnd . normalizeAnf . translateAstToAnf
+
+-- pretty print
+ppAnf :: ANF -> String
+ppAnf anf = 
+  case anf of
+    Cst b -> show b
+    Pos i -> show i
+    Xor e1 e2 -> '(' : ppAnf e1 ++ ")" ++ " ^ " ++ "(" ++ ppAnf e2 ++ ")"
+    And e1 e2 -> ppAnf e1 ++ " & " ++ ppAnf e2

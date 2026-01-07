@@ -11,6 +11,6 @@ groverIteration oracle diffuser 1 = oracle ++ diffuser
 groverIteration oracle diffuser n =
   oracle ++ diffuser ++ groverIteration oracle diffuser (n-1)
 
-grover :: Program -> Int -> Program
-grover oracle n =
+grovers :: Program -> CircuitWidth -> Program
+grovers oracle n =
   pow H n ++ groverIteration oracle (diffusion n) (floor (pi / 4.0 * sqrt(2 ^ n)))

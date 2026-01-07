@@ -140,9 +140,6 @@ evalByParts n prog t = do
     pp t'
     evalByParts n (drop n prog) t'
 
-pow :: SingleGate -> Int -> Program
-pow gate n = map (`Only` gate) [0..n-1]
-
 --- pretty printer ---
 
 pp :: Tensor -> IO ()
