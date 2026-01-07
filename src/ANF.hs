@@ -1,67 +1,52 @@
 module ANF where
 
 import AST
+import Data.List (intercalate, union)
 
-data ANF
-  = Cst Bool
-  | Pos Int
-  | Xor ANF ANF
-  | And ANF ANF
-  deriving (Eq, Show)
+type ANF = [ANFterm]
+type ANFterm = [Atom]
 
-translateAstToAnf :: Exp -> ANF
-translateAstToAnf (Const b) = Cst b
-translateAstToAnf (Var i) = Pos i
-translateAstToAnf (NEG e) = Xor (astToAnf e) (Cst True)
-translateAstToAnf (XOR e1 e2) = Xor (astToAnf e1) (astToAnf e2)
-translateAstToAnf (AND e1 e2) = And (astToAnf e1) (astToAnf e2)
-translateAstToAnf (OR e1 e2) =
-  let e1' = astToAnf e1
-      e2' = astToAnf e2
-   in Xor (Xor e1' e2') (And e1' e2') -- equivalent to elimORwXOR
+elimOrNeg :: Exp -> Exp
+elimOrNeg (Atom (Cst b)) = Atom $ Cst b
+elimOrNeg (Atom (Var i)) = Atom $ Var i
+elimOrNeg (NEG e) = XOR (elimOrNeg e) $ Atom $ Cst True
+elimOrNeg (XOR e1 e2) = XOR (elimOrNeg e1) (elimOrNeg e2)
+elimOrNeg (AND e1 e2) = AND (elimOrNeg e1) (elimOrNeg e2)
+elimOrNeg (OR e1 e2) =
+  let e1' = elimOrNeg e1
+      e2' = elimOrNeg e2
+   in XOR (XOR e1' e2') (AND e1' e2') -- equivalent to elimORwXOR
 
--- distribute And across Xor.
-distributeAnd :: ANF -> ANF
-distributeAnd anf =
-  case anf of
-    And e1 e2 -> distAnd (dist e1) (dist e2)
-    Xor e1 e2 -> Xor (dist e1) (dist e2)
-    _ -> anf
+-- distribute AND across XOR.
+distributeAnd :: Exp -> Exp
+distributeAnd e =
+  case e of
+    AND e1 e2 -> distOne (distributeAnd e1) (distributeAnd e2)
+    XOR e1 e2 -> XOR (distributeAnd e1) (distributeAnd e2)
+    _ -> e
   where
-    dist a = distributeAnd a
-    distAnd e1 e2 =
+    distOne e1 e2 =
       case (e1,e2) of
-        (Xor a b,c) -> Xor (distAnd a c) (distAnd b c)
-        (a,Xor b c) -> Xor (distAnd a b) (distAnd a c)
-        _ -> And e1 e2
+        (XOR a b, c) -> XOR (distOne a c) (distOne b c)
+        (a, XOR b c) -> XOR (distOne a b) (distOne a c)
+        _ -> AND e1 e2
 
-normalizeAnf :: ANF -> ANF
-normalizeAnf anf =
-  case anf of
-    -- AND reductions
-    And (Cst False) _ -> Cst False
-    And _ (Cst False) -> Cst False
-    And (Cst True) a  -> normalizeAnf a
-    And a (Cst True)  -> normalizeAnf a
+makeAnf :: Exp -> Maybe ANF
+makeAnf (XOR a b) = (++) <$> makeAnf a <*> makeAnf b
+makeAnf e@(AND _ _) = (:[]) <$> makeAnfTerm e
+makeAnf e@(Atom _) = (:[]) <$> makeAnfTerm e
+makeAnf _ = Nothing
 
-    -- XOR reductions
-    Xor a (Cst False) -> normalizeAnf a
-    Xor (Cst False) a -> normalizeAnf a
+makeAnfTerm :: Exp -> Maybe ANFterm
+makeAnfTerm (AND a b) = union <$> makeAnfTerm a <*> makeAnfTerm b
+makeAnfTerm (Atom atom) = Just [atom]
+makeAnfTerm _ = Nothing
 
-    -- normalize whole expression tree
-    And a b -> And (normalizeAnf a) (normalizeAnf b)
-    Xor a b -> Xor (normalizeAnf a) (normalizeAnf b)
-    _ -> anf
+exp2anf :: Exp -> Maybe ANF
+exp2anf = makeAnf . distributeAnd . elimOrNeg
 
--- double normalization may be needed in the future (unlikely)
-astToAnf :: Exp -> ANF
-astToAnf = distributeAnd . normalizeAnf . translateAstToAnf
+ppANF :: ANF -> String
+ppANF anf = intercalate " +" (ppANFterm <$> anf)
 
--- pretty print
-ppAnf :: ANF -> String
-ppAnf anf = 
-  case anf of
-    Cst b -> show b
-    Pos i -> show i
-    Xor e1 e2 -> '(' : ppAnf e1 ++ ")" ++ " ^ " ++ "(" ++ ppAnf e2 ++ ")"
-    And e1 e2 -> ppAnf e1 ++ " & " ++ ppAnf e2
+ppANFterm :: ANFterm -> String
+ppANFterm = concatMap $ (' ':) . show

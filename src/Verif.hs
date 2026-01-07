@@ -11,8 +11,8 @@ xor _ _ = True
 
 
 verif :: Exp -> BitString -> Bool
-verif (Const b) _ = b
-verif (Var n) bs = bs !! n
+verif (Atom (Cst b)) _ = b
+verif (Atom (Var n)) bs = bs !! n
 verif (AND a b) bs = verif a bs && verif b bs
 verif (OR a b) bs = verif a bs || verif b bs
 verif (XOR a b) bs = verif a bs `xor` verif b bs

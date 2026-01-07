@@ -17,15 +17,12 @@ common warnings
 
 library
     import:           warnings
-    main-is:          SAT.hs
     exposed-modules:  AST,
                       ANF,
-                      Generator,
                       Parser,
                       Grovers,
                       Eval,
                       Gates,
-                      Transform,
                       Verif,
                       Measure,
                       Tests
@@ -37,7 +34,8 @@ library
                       vector,
                       containers,
                       tasty,
-                      tasty-hunit
+                      tasty-hunit,
+                      QuickCheck
     hs-source-dirs:   exe,
                       src,
                       tests,

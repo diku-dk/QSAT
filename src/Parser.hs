@@ -120,7 +120,7 @@ parseAtom = choice
       pure $ NEG x,
     do
       x <- tVar
-      pure $ Var x,
+      pure $ Atom $ Var x,
     lString "(" *> parseExp <* lString ")"
   ]
 

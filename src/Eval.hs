@@ -5,7 +5,6 @@ import Gates
 import qualified Data.Vector as V
 import Data.Maybe(isJust)
 import Data.List(find)
-import Data.Complex
 
 --- type definations ---
 data Qubit =
