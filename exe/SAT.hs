@@ -2,7 +2,6 @@ module Main where
 
 import Parser
 import Grovers
-import Generator
 import Eval
 import Gates
 import Measure

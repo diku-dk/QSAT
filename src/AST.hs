@@ -36,6 +36,7 @@ instance Arbitrary Exp where
   shrink = shrinkExp
 
 genExp :: Int -> Gen Exp
+genExp 0 = Atom <$> arbitrary
 genExp n = oneof
   [ Atom <$> arbitrary
   , AND <$> genExp (n `div` 2) <*> genExp (n `div` 2)

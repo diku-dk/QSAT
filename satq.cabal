@@ -51,7 +51,8 @@ executable SATQ
                       random,
                       hmatrix,
                       vector,
-                      containers
+                      containers, 
+                      QuickCheck
     hs-source-dirs:   exe,
                       src,
     default-language: GHC2021
@@ -63,3 +64,5 @@ test-suite tests
         base
       , tasty
       , satq
+      , tasty-quickcheck
+      , QuickCheck
