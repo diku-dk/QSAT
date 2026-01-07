@@ -3,6 +3,7 @@ module Measure where
 import Eval ( Tensor, PureTensor(..), Qubit(..), (~=))
 import Numeric.LinearAlgebra
 import qualified Data.Vector as V
+import qualified Data.Vector.Storable as VS
 
 unQubit :: Qubit -> Vector Double
 unQubit Ket0 = fromList [1, 0]
@@ -19,3 +20,13 @@ vectorizePT (PT z v) = scale z $ V.foldl1 f (unQubit <$> v)
 
 roundZero :: Double -> Double
 roundZero x = if x ~= 0 then 0 else x
+
+greedyMeasure :: Vector Double -> Int
+greedyMeasure v = VS.maxIndex $ VS.map (\x -> x*x) v
+
+toBin :: Int -> [Bool]
+toBin 0 = [False]
+toBin 1 = [True]
+toBin n = 
+    if n `mod` 2 == 1 then toBin (n `div` 2) ++ [True]
+    else toBin (n `div` 2) ++ [False]

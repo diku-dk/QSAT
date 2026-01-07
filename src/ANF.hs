@@ -1,10 +1,16 @@
 module ANF where
 
 import AST
-import Data.List (intercalate, union)
+import Data.List (intercalate, union, nub)
+import Data.Maybe (mapMaybe)
+import Gates
+
+--- Type Definiations ---
 
 type ANF = [ANFterm]
 type ANFterm = [Atom]
+
+--- conversion Exp -> ANF ---
 
 elimOrNeg :: Exp -> Exp
 elimOrNeg (Atom (Cst b)) = Atom $ Cst b
@@ -42,11 +48,38 @@ makeAnfTerm (AND a b) = union <$> makeAnfTerm a <*> makeAnfTerm b
 makeAnfTerm (Atom atom) = Just [atom]
 makeAnfTerm _ = Nothing
 
+simplifyAnf :: ANF -> ANF
+simplifyAnf = mapMaybe simplifyAnfTerm -- TODO: also make so that "a xor a = Nothing"
+  where 
+    simplifyAnfTerm :: ANFterm -> Maybe ANFterm
+    simplifyAnfTerm term = 
+      if Cst False `elem` term 
+        then Nothing 
+        else Just $ filter (/= Cst True) $ nub term
+
 exp2anf :: Exp -> Maybe ANF
-exp2anf = makeAnf . distributeAnd . elimOrNeg
+exp2anf e = simplifyAnf <$> makeAnf (distributeAnd $ elimOrNeg e)
+
+--- Conversion ANF -> oracle ---
+
+anf2oracle :: ANF -> Program
+anf2oracle = mapMaybe anfTerm2oracle
+  where 
+    anfTerm2oracle :: ANFterm -> Maybe Gate
+    anfTerm2oracle [] = Nothing  
+    -- empty list are 1's, resulting from removing one as identity on and. 
+    -- However, in this case, it actually works out as "xor 1" correspondes to the global phase flip -I, which doesn't do anything on quantum systems.
+    anfTerm2oracle l = MCZ <$> mapM extractVar l
+    
+    extractVar :: Atom -> Maybe Int
+    extractVar (Var i) = Just i
+    extractVar _ = Nothing
+
+--- pretty printers ---
 
 ppANF :: ANF -> String
 ppANF anf = intercalate " +" (ppANFterm <$> anf)
 
 ppANFterm :: ANFterm -> String
-ppANFterm = concatMap $ (' ':) . show
+ppANFterm [] = "1"
+ppANFterm l = concatMap ((' ':) . show) l
