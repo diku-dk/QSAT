@@ -5,7 +5,7 @@ import ANF
 import Verif
 import Test.QuickCheck
 import Eval (evalProgram, zero)
-import Measure (vectorize, greedyMeasure, seperateSolution)
+import Measure (vectorize, seperateSolution)
 import Grovers (grovers)
 import Gates (CircuitWidth)
 import Data.List (nub)
