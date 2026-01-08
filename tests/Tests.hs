@@ -5,9 +5,11 @@ import ANF
 import Verif
 import Test.QuickCheck
 import Eval (evalProgram, zero)
-import Measure (vectorize, greedyMeasure, toBin)
+import Measure (vectorize, greedyMeasure, seperateSolution)
 import Grovers (grovers)
 import Gates (CircuitWidth)
+import Data.List (nub)
+import Data.Vector.Storable (Vector)
 
 maxVar :: Exp -> Int
 maxVar (Atom (Var n)) = n
@@ -27,17 +29,32 @@ exp2anfTest e =
       Nothing -> False
       Just anf -> verif e bs == verifANF anf bs
 
-groverTest :: Exp -> Property
-groverTest e = 
+groverCheatTest :: Exp -> Property
+groverCheatTest e = 
   let width = maxVar e + 1
-  in width /= 0 ==> property $
-    case runGrover width e of
+  in width > 0 ==> property $
+    case runGroverCheat width e of
       Nothing -> False
-      Just solution -> verif e solution
+      Just (solSet1, solSet2) ->
+        case (nub $ verif e <$> solSet1, nub $ verif e <$> solSet2) of
+          ([], _) -> True
+          (_, []) -> True
+          ([truthVal1], [truthVal2]) -> truthVal1 /= truthVal2
+          _ -> False
 
-runGrover :: CircuitWidth -> Exp -> Maybe BitString
+runGroverCheat :: CircuitWidth -> Exp -> Maybe ([BitString], [BitString])
+runGroverCheat width e = do
+  oracle <- anf2oracle <$> exp2anf e
+  let groversCircuit = grovers width oracle 1
+  let stateVector = vectorize $ evalProgram groversCircuit (zero width)
+  pure $ (pairMap . map) (padded2bin width) (seperateSolution stateVector)
+
+pairMap :: (a -> b) -> (a, a) -> (b, b)
+pairMap f (x, y) = (f x, f y)
+
+runGrover :: CircuitWidth -> Exp -> Maybe (Vector Double)
 runGrover width e = do
   oracle <- anf2oracle <$> exp2anf e
   let groversCircuit = grovers width oracle 1
-  let solution = toBin $ greedyMeasure $ vectorize $ evalProgram groversCircuit (zero width)
+  let solution = vectorize $ evalProgram groversCircuit (zero width)
   pure solution

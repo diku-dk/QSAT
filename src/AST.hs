@@ -32,7 +32,7 @@ instance Show Exp where
   show (NEG a) = "~" ++ show a
 
 instance Arbitrary Exp where
-  arbitrary = sized genExp
+  arbitrary = sized (\n -> genExp (n + 2))
   shrink = shrinkExp
 
 genExp :: Int -> Gen Exp

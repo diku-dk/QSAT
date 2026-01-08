@@ -27,3 +27,17 @@ verifANF anf bs =
     verifAtom :: Atom -> Bool
     verifAtom (Cst b) = b
     verifAtom (Var n) = bs !! n
+
+--- int to bitstring ---
+
+padded2bin :: Int -> Int -> BitString
+padded2bin n i = 
+  let unpadded = toBin i
+  in replicate (n - length unpadded) False ++ unpadded
+
+toBin :: Int -> BitString
+toBin 0 = [False]
+toBin 1 = [True]
+toBin n = 
+    if n `mod` 2 == 1 then toBin (n `div` 2) ++ [True]
+    else toBin (n `div` 2) ++ [False]
