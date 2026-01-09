@@ -10,6 +10,7 @@ import Grovers (grovers)
 import Gates (CircuitWidth)
 import Data.List (nub)
 import Data.Vector.Storable (Vector)
+import Data.Vector.Unboxed.Mutable (MVector(MV_2))
 
 maxVar :: Exp -> Int
 maxVar (Atom (Var n)) = n
@@ -37,9 +38,9 @@ groverCheatTest e =
       Nothing -> False
       Just (solSet1, solSet2) ->
         case (nub $ verif e <$> solSet1, nub $ verif e <$> solSet2) of
-          ([], _) -> True
-          (_, []) -> True
           ([truthVal1], [truthVal2]) -> truthVal1 /= truthVal2
+          ([_], _) -> True
+          (_, [_]) -> True
           _ -> False
 
 runGroverCheat :: CircuitWidth -> Exp -> Maybe ([BitString], [BitString])

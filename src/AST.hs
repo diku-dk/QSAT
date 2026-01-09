@@ -32,17 +32,17 @@ instance Show Exp where
   show (NEG a) = "~" ++ show a
 
 instance Arbitrary Exp where
-  arbitrary = sized (\n -> genExp (n + 2))
+  arbitrary = sized (\n -> genExp (n + 2) (n + 2))
   shrink = shrinkExp
 
-genExp :: Int -> Gen Exp
-genExp 0 = Atom <$> arbitrary
-genExp n = oneof
+genExp :: Int -> Int -> Gen Exp
+genExp m 0 = Atom <$> genAtom m
+genExp m n = oneof
   [ Atom <$> arbitrary
-  , AND <$> genExp (n `div` 2) <*> genExp (n `div` 2)
-  , OR <$> genExp (n `div` 2) <*> genExp (n `div` 2)
-  , XOR <$> genExp (n `div` 2) <*> genExp (n `div` 2)
-  , NEG <$> genExp (n-1)
+  , AND <$> genExp m (n `div` 2) <*> genExp m (n `div` 2)
+  , OR <$> genExp m (n `div` 2) <*> genExp m (n `div` 2)
+  , XOR <$> genExp m (n `div` 2) <*> genExp m (n `div` 2)
+  , NEG <$> genExp m (n-1)
   ]
 
 genAtom :: Int -> Gen Atom
