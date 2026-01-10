@@ -139,6 +139,9 @@ evalByParts n prog t = do
     pp t'
     evalByParts n (drop n prog) t'
 
+scanProgram :: Program -> Tensor -> [Int]
+scanProgram program tensor = map length $ scanl (flip evalGate) tensor program
+
 --- pretty printer ---
 
 pp :: Tensor -> IO ()

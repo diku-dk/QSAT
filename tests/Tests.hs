@@ -4,7 +4,7 @@ import AST
 import ANF
 import Verif
 import Test.QuickCheck
-import Eval (evalProgram, zero)
+import Eval (evalProgram, zero, scanProgram)
 import Measure (vectorize, seperateSolution)
 import Grovers (grovers)
 import Gates (CircuitWidth)
@@ -59,3 +59,21 @@ runGrover width e = do
   let groversCircuit = grovers width oracle 1
   let solution = vectorize $ evalProgram groversCircuit (zero width)
   pure solution
+
+--- 
+
+tensorRankTest :: Exp -> Property
+tensorRankTest e = 
+  let width = maxVar e + 1
+  in forAll (getPositive <$> arbitrary) $ \iterations ->
+    case (scanGrover width e 1, scanGrover width e iterations) of
+      (Nothing, _) -> False
+      (_, Nothing) -> False
+      (Just ranks1, Just ranks2) -> maximum ranks1 == maximum ranks2
+
+scanGrover :: CircuitWidth -> Exp -> Int -> Maybe [Int]
+scanGrover width e iterations = do
+  oracle <- anf2oracle <$> exp2anf e
+  let groversCircuit = grovers width oracle iterations
+  let ranks = scanProgram groversCircuit (zero width)
+  pure ranks
