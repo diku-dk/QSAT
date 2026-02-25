@@ -1,12 +1,13 @@
 module ANF where
 
-import AST
+import AST ( Exp(..), Atom(..) )
 import Data.List (intercalate, union, nub)
 import Data.Maybe (mapMaybe)
 import Gates
 
---- Type Definiations ---
+--- Type Definitions ---
 
+newtype PolySystem = PS [ANF]
 type ANF = [ANFterm]
 type ANFterm = [Atom]
 
@@ -62,18 +63,27 @@ exp2anf e = simplifyAnf <$> makeAnf (distributeAnd $ elimOrNeg e)
 
 --- Conversion ANF -> oracle ---
 
-anf2oracle :: ANF -> Program
-anf2oracle = mapMaybe anfTerm2oracle
+extractVar :: Atom -> Maybe Int
+extractVar (Var i) = Just i
+extractVar _ = Nothing
+
+maxVar :: PolySystem -> QubitPos
+maxVar (PS anfs) = (maximum . maximum . maximum) $ (map . map . mapMaybe) extractVar anfs
+
+anf2oracle :: QubitPos -> ANF -> Program
+anf2oracle ancilla = map anfTerm2oracle
   where 
-    anfTerm2oracle :: ANFterm -> Maybe Gate
-    anfTerm2oracle [] = Nothing  
-    -- empty list are 1's, resulting from removing one as identity on and. 
-    -- However, in this case, it actually works out as "xor 1" correspondes to the global phase flip -I, which doesn't do anything on quantum systems.
-    anfTerm2oracle l = MCZ <$> mapM extractVar l
+    anfTerm2oracle :: ANFterm -> Gate
+    anfTerm2oracle [] = Only ancilla X
+    anfTerm2oracle l = MCX (mapMaybe extractVar l) ancilla
     
-    extractVar :: Atom -> Maybe Int
-    extractVar (Var i) = Just i
-    extractVar _ = Nothing
+ps2oracle :: PolySystem -> Program
+ps2oracle (PS anfs) =
+  let 
+    ancillas = take (length anfs) [maxVar (PS anfs) + 1 ..]
+    halfprogram = concat $ zipWith anf2oracle ancillas anfs
+  in 
+    halfprogram ++ [MCZ ancillas] ++ reverse halfprogram
 
 --- pretty printers ---
 

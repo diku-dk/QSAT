@@ -8,7 +8,7 @@ type Error = String
 type VTable = [(String,Int)]
 type ParserState = (String,VTable)
 
-newtype Parser a = Parser {runParser :: (ParserState -> Either Error (ParserState, a))}
+newtype Parser a = Parser {runParser :: ParserState -> Either Error (ParserState, a)}
 
 instance Functor Parser where
   fmap = liftM
@@ -106,7 +106,7 @@ tVar = do
     Just x -> pure x
     Nothing ->
       let s = length env
-       in do 
+       in do
             modEnv (\table -> (v,s) : table)
             pure s
 
@@ -147,7 +147,7 @@ parseExp = choice
 
 
 parse :: String -> Exp
-parse s = 
+parse s =
   case runParser (parseExp <* eof) (s,initTable) of
     Right (_,res) -> res
     Left err      -> error err

@@ -1,7 +1,7 @@
 module Tests where
 
-import AST
-import ANF
+import AST ( Exp, maxVar )
+import ANF ( exp2anf, anf2oracle )
 import Verif
 import Test.QuickCheck
 import Eval (evalProgram, zero, scanProgram)
@@ -10,15 +10,6 @@ import Grovers (grovers)
 import Gates (CircuitWidth)
 import Data.List (nub)
 import Data.Vector.Storable (Vector)
-import Data.Vector.Unboxed.Mutable (MVector(MV_2))
-
-maxVar :: Exp -> Int
-maxVar (Atom (Var n)) = n
-maxVar (Atom (Cst _)) = -1
-maxVar (AND a b) = max (maxVar a) (maxVar b)
-maxVar (XOR a b) = max (maxVar a) (maxVar b)
-maxVar (OR a b) = max (maxVar a) (maxVar b)
-maxVar (NEG a) = maxVar a
 
 genBitStrings :: Int -> Gen BitString
 genBitStrings n = vectorOf n arbitrary

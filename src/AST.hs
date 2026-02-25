@@ -59,3 +59,11 @@ shrinkAtom :: Atom -> [Atom]
 shrinkAtom (Cst True) = []
 shrinkAtom (Cst False) = []
 shrinkAtom (Var n) = Var <$> shrink n
+
+maxVar :: Exp -> Int
+maxVar (Atom (Var n)) = n
+maxVar (Atom (Cst _)) = -1
+maxVar (AND a b) = max (maxVar a) (maxVar b)
+maxVar (XOR a b) = max (maxVar a) (maxVar b)
+maxVar (OR a b) = max (maxVar a) (maxVar b)
+maxVar (NEG a) = maxVar a

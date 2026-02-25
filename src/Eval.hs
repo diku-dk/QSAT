@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -Wno-orphans #-}
 module Eval where
 
 import Gates
@@ -23,7 +22,7 @@ qsnd Ket1 = 1
 qsnd KetPlus = sqrt 2 / 2
 qsnd KetMinus = - (sqrt 2 / 2)
 
-data PureTensor = PT {scalar :: Double, qbs :: V.Vector Qubit}
+data PureTensor = PT {scalar :: Double, pt :: V.Vector Qubit}
   deriving(Show)
 
 -- utility functions for pure tensors
@@ -60,17 +59,27 @@ evalGate gate = tensorSimp . concatMap (evalTerm gate)
 
 -- evaluates a gate on a pure tensor, using LinAlg Module
 evalTerm :: Gate -> PureTensor -> Tensor
-evalTerm (Only pos gate) qbs =
-  let (z, v) = evalSingle gate (qbs ! pos)
-  in pure $ (z *^ qbs) // [(pos, v)]
-evalTerm (MCZ pos) qbs =
-  case product $ [qsnd (qbs ! i) | i <- pos] of
-    0 -> [qbs] -- if beta = 0, there is no correction
-    1 -> [(-1) *^ qbs]
-    beta -> [qbs, correction] -- calculate correction for non-zero beta
+evalTerm (Only pos gate) pt =
+  let (z, v) = evalSingle gate (pt ! pos)
+  in pure $ (z *^ pt) // [(pos, v)]
+evalTerm (MCZ pos) pt =
+  case product $ [qsnd (pt ! i) | i <- pos] of
+    0 -> [pt] -- if beta = 0, there is no correction
+    1 -> [(-1) *^ pt]
+    beta -> [pt, correction] -- calculate correction for non-zero beta
       where
         updates = repeat Ket1
-        correction = ((-2 * beta) *^ qbs) // zip pos updates
+        correction = ((-2 * beta) *^ pt) // zip pos updates
+evalTerm (MCX ctrls target) pt =
+  case product $ [qsnd (pt ! i) | i <- ctrls] of
+    0 -> [pt] -- if beta = 0, there is no correction
+    1 -> [(-1) *^ pt]
+    beta -> [pt, correction1, correction2] -- calculate correction for non-zero beta
+      where
+        ctrl_updates = repeat Ket1
+        (target'_scalar, target'_qubit) = evalSingle X (pt ! target)
+        correction1 = (beta *^ pt) // zip ctrls ctrl_updates
+        correction2 = ((- target'_scalar) *^ correction1) // [(target, target'_qubit)]
 
 evalSingle :: SingleGate -> Qubit -> (Double, Qubit)
 evalSingle X Ket0 = (1, Ket1)
@@ -101,7 +110,7 @@ tensorSimp tensor =
           (Nothing, _, _) -> tensor -- this case shouldn't be possible
 
 pureTensorSimp :: PureTensor -> PureTensor -> Maybe PureTensor
-pureTensorSimp pt1@(PT z1 v1) pt2@(PT z2 v2) =
+pureTensorSimp (PT z1 v1) (PT z2 v2) =
   let isEq = V.zipWith (==) v1 v2
   in case countFalse isEq of
       0 ->
