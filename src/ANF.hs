@@ -4,12 +4,21 @@ import AST ( Exp(..), Atom(..) )
 import Data.List (intercalate, union, nub)
 import Data.Maybe (mapMaybe)
 import Gates
+import Test.QuickCheck
+import Safe.Foldable
 
 --- Type Definitions ---
 
 newtype PolySystem = PS [ANF]
+  deriving Show
 type ANF = [ANFterm]
 type ANFterm = [Atom]
+
+instance Arbitrary PolySystem where
+  arbitrary = simplifyPs . PS <$> (listOf . listOf . listOf) (sized genVar)
+
+genVar :: Int -> Gen Atom
+genVar n = elements $ Var <$> [0 .. n-1]
 
 --- conversion Exp -> ANF ---
 
@@ -51,12 +60,15 @@ makeAnfTerm _ = Nothing
 
 simplifyAnf :: ANF -> ANF
 simplifyAnf = mapMaybe simplifyAnfTerm -- TODO: also make so that "a xor a = Nothing"
-  where 
+  where
     simplifyAnfTerm :: ANFterm -> Maybe ANFterm
-    simplifyAnfTerm term = 
-      if Cst False `elem` term 
-        then Nothing 
+    simplifyAnfTerm term =
+      if Cst False `elem` term
+        then Nothing
         else Just $ filter (/= Cst True) $ nub term
+
+simplifyPs :: PolySystem -> PolySystem
+simplifyPs (PS anfs) = PS $ simplifyAnf <$> anfs
 
 exp2anf :: Exp -> Maybe ANF
 exp2anf e = simplifyAnf <$> makeAnf (distributeAnd $ elimOrNeg e)
@@ -68,21 +80,24 @@ extractVar (Var i) = Just i
 extractVar _ = Nothing
 
 maxVar :: PolySystem -> QubitPos
-maxVar (PS anfs) = (maximum . maximum . maximum) $ (map . map . mapMaybe) extractVar anfs
+maxVar (PS anfs) = maximumDef (-1) $ (concatMap . concatMap . mapMaybe) extractVar anfs
+
+ps2width :: PolySystem -> CircuitDescriptor
+ps2width ps@(PS anfs) = (maxVar ps + 1, length anfs)
 
 anf2oracle :: QubitPos -> ANF -> Program
 anf2oracle ancilla = map anfTerm2oracle
-  where 
+  where
     anfTerm2oracle :: ANFterm -> Gate
     anfTerm2oracle [] = Only ancilla X
     anfTerm2oracle l = MCX (mapMaybe extractVar l) ancilla
-    
+
 ps2oracle :: PolySystem -> Program
 ps2oracle (PS anfs) =
-  let 
+  let
     ancillas = take (length anfs) [maxVar (PS anfs) + 1 ..]
     halfprogram = concat $ zipWith anf2oracle ancillas anfs
-  in 
+  in
     halfprogram ++ [MCZ ancillas] ++ reverse halfprogram
 
 --- pretty printers ---

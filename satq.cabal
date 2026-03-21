@@ -35,7 +35,8 @@ library
                       containers,
                       tasty,
                       tasty-hunit,
-                      QuickCheck
+                      QuickCheck,
+                      safe
     hs-source-dirs:   exe,
                       src,
                       tests,

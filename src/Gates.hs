@@ -3,6 +3,7 @@ module Gates where
 -- the building bricks of quantum simulation.
 type QubitPos = Int
 type AncillaPos = Int
+type CircuitDescriptor = (Int, Int)
 
 type CircuitWidth = Int
 

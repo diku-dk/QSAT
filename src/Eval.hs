@@ -45,7 +45,10 @@ zero :: Int -> Tensor
 zero dim = [PT 1 $ V.replicate dim Ket0]
 
 hadamard :: Int -> Tensor
-hadamard dim = evalProgram (pow H dim) (zero dim)
+hadamard dim = [PT 1 $ V.replicate dim KetPlus]
+
+initial :: CircuitDescriptor -> Tensor
+initial (inputDim, ancillaDim) = [PT 1 $ V.replicate inputDim KetPlus <> V.replicate ancillaDim Ket0]
 
 --- evaluation functions ---
 
@@ -57,7 +60,7 @@ evalProgram program tensor = foldl (flip evalGate) tensor program
 evalGate :: Gate -> Tensor -> Tensor
 evalGate gate = tensorSimp . concatMap (evalTerm gate)
 
--- evaluates a gate on a pure tensor, using LinAlg Module
+-- evaluates a gate on a pure tensor
 evalTerm :: Gate -> PureTensor -> Tensor
 evalTerm (Only pos gate) pt =
   let (z, v) = evalSingle gate (pt ! pos)
@@ -73,12 +76,14 @@ evalTerm (MCZ pos) pt =
 evalTerm (MCX ctrls target) pt =
   case product $ [qsnd (pt ! i) | i <- ctrls] of
     0 -> [pt] -- if beta = 0, there is no correction
-    1 -> [(-1) *^ pt]
+    1 -> 
+      let (target'_scalar, target'_qubit) = evalSingle X (pt ! target) 
+      in [(target'_scalar *^ pt) // [(target, target'_qubit)]]
     beta -> [pt, correction1, correction2] -- calculate correction for non-zero beta
       where
         ctrl_updates = repeat Ket1
         (target'_scalar, target'_qubit) = evalSingle X (pt ! target)
-        correction1 = (beta *^ pt) // zip ctrls ctrl_updates
+        correction1 = ((- beta) *^ pt) // zip ctrls ctrl_updates
         correction2 = ((- target'_scalar) *^ correction1) // [(target, target'_qubit)]
 
 evalSingle :: SingleGate -> Qubit -> (Double, Qubit)

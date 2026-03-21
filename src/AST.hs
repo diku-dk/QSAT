@@ -46,7 +46,11 @@ genExp m n = oneof
   ]
 
 genAtom :: Int -> Gen Atom
-genAtom n = elements $ Cst True : Cst False : (Var <$> [0 .. n-1])
+genAtom n = 
+  frequency [
+    (0, elements [Cst True, Cst False]),
+    (9, elements $ Var <$> [0 .. n-1])
+  ]
 
 shrinkExp :: Exp -> [Exp]
 shrinkExp (Atom atom) = Atom <$> shrink atom

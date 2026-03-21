@@ -28,6 +28,9 @@ verifANF anf bs =
     verifAtom (Cst b) = b
     verifAtom (Var n) = bs !! n
 
+verifPS :: PolySystem -> BitString -> Bool
+verifPS (PS anfs) bs = and $ verifANF <$> anfs <*> repeat bs
+
 --- int to bitstring ---
 
 padded2bin :: Int -> Int -> BitString

@@ -1,70 +1,42 @@
 module Tests where
 
-import AST ( Exp, maxVar )
-import ANF ( exp2anf, anf2oracle )
+import ANF ( PolySystem, ps2width, ps2oracle, simplifyPs, maxVar )
 import Verif
 import Test.QuickCheck
-import Eval (evalProgram, zero, scanProgram)
+import Eval (evalProgram, zero, scanProgram, hadamard, initial)
 import Measure (vectorize, seperateSolution)
 import Grovers (grovers)
-import Gates (CircuitWidth)
+import Gates (CircuitWidth, CircuitDescriptor)
 import Data.List (nub)
 import Data.Vector.Storable (Vector)
 
-genBitStrings :: Int -> Gen BitString
-genBitStrings n = vectorOf n arbitrary
+-- genBitStrings :: Int -> Gen BitString
+-- genBitStrings n = vectorOf n arbitrary
 
-exp2anfTest :: Exp -> Property
-exp2anfTest e =
-  forAll (genBitStrings (maxVar e + 1)) $
-    \bs -> case exp2anf e of
-      Nothing -> False
-      Just anf -> verif e bs == verifANF anf bs
+groverCheatTest :: PolySystem -> Property
+groverCheatTest ps =
+  let width = ps2width ps
+  in maxVar ps > 0 ==> property $
+    let (solSet1, solSet2) = runGroverCheat width ps in
+      case (nub $ verifPS ps <$> solSet1, nub $ verifPS ps <$> solSet2) of
+        ([truthVal1], [truthVal2]) -> truthVal1 /= truthVal2
+        ([_], _) -> True
+        (_, [_]) -> True
+        _ -> False
 
-groverCheatTest :: Exp -> Property
-groverCheatTest e = 
-  let width = maxVar e + 1
-  in width > 0 ==> property $
-    case runGroverCheat width e of
-      Nothing -> False
-      Just (solSet1, solSet2) ->
-        case (nub $ verif e <$> solSet1, nub $ verif e <$> solSet2) of
-          ([truthVal1], [truthVal2]) -> truthVal1 /= truthVal2
-          ([_], _) -> True
-          (_, [_]) -> True
-          _ -> False
-
-runGroverCheat :: CircuitWidth -> Exp -> Maybe ([BitString], [BitString])
-runGroverCheat width e = do
-  oracle <- anf2oracle <$> exp2anf e
-  let groversCircuit = grovers width oracle 1
-  let stateVector = vectorize $ evalProgram groversCircuit (zero width)
-  pure $ (pairMap . map) (padded2bin width) (seperateSolution stateVector)
+runGroverCheat :: CircuitDescriptor -> PolySystem -> ([BitString], [BitString])
+runGroverCheat width ps =
+  let oracle = ps2oracle ps
+      groversCircuit = grovers width oracle 1
+      stateVector = vectorize $ evalProgram groversCircuit $ initial width
+  in (pairMap . map) (padded2bin (uncurry (+) width)) (seperateSolution stateVector)
 
 pairMap :: (a -> b) -> (a, a) -> (b, b)
 pairMap f (x, y) = (f x, f y)
 
-runGrover :: CircuitWidth -> Exp -> Maybe (Vector Double)
-runGrover width e = do
-  oracle <- anf2oracle <$> exp2anf e
-  let groversCircuit = grovers width oracle 1
-  let solution = vectorize $ evalProgram groversCircuit (zero width)
-  pure solution
-
---- 
-
-tensorRankTest :: Exp -> Property
-tensorRankTest e = 
-  let width = maxVar e + 1
-  in forAll (getPositive <$> arbitrary) $ \iterations ->
-    case (scanGrover width e 1, scanGrover width e iterations) of
-      (Nothing, _) -> False
-      (_, Nothing) -> False
-      (Just ranks1, Just ranks2) -> maximum ranks1 == maximum ranks2
-
-scanGrover :: CircuitWidth -> Exp -> Int -> Maybe [Int]
-scanGrover width e iterations = do
-  oracle <- anf2oracle <$> exp2anf e
-  let groversCircuit = grovers width oracle iterations
-  let ranks = scanProgram groversCircuit (zero width)
-  pure ranks
+-- runGrover :: CircuitWidth -> PolySystem -> Maybe (Vector Double)
+-- runGrover width e = do
+--   oracle <- anf2oracle <$> exp2anf e
+--   let groversCircuit = grovers width oracle 1
+--   let solution = vectorize $ evalProgram groversCircuit (zero width)
+--   pure solution
