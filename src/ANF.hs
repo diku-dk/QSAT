@@ -15,10 +15,11 @@ type ANF = [ANFterm]
 type ANFterm = [Atom]
 
 instance Arbitrary PolySystem where
-  arbitrary = simplifyPs . PS <$> (listOf . listOf . listOf) (sized genVar)
+  arbitrary = PS <$> (listOf1 . listOf1 . listOf1) (sized genVar)
+  -- Using ListOf1 for now and not using constants (genVar) as I don't want to deal with the strange edge cases
 
 genVar :: Int -> Gen Atom
-genVar n = elements $ Var <$> [0 .. n-1]
+genVar n = elements $ Var <$> [0 .. n]
 
 --- conversion Exp -> ANF ---
 
@@ -58,20 +59,22 @@ makeAnfTerm (AND a b) = union <$> makeAnfTerm a <*> makeAnfTerm b
 makeAnfTerm (Atom atom) = Just [atom]
 makeAnfTerm _ = Nothing
 
-simplifyAnf :: ANF -> ANF
-simplifyAnf = mapMaybe simplifyAnfTerm -- TODO: also make so that "a xor a = Nothing"
-  where
-    simplifyAnfTerm :: ANFterm -> Maybe ANFterm
-    simplifyAnfTerm term =
-      if Cst False `elem` term
-        then Nothing
-        else Just $ filter (/= Cst True) $ nub term
+simplifyAnfTerm :: ANFterm -> Maybe ANFterm
+simplifyAnfTerm term =
+  if Cst False `elem` term
+    then Nothing
+    else Just $ filter (/= Cst True) $ nub term
 
-simplifyPs :: PolySystem -> PolySystem
-simplifyPs (PS anfs) = PS $ simplifyAnf <$> anfs
+simplifyAnf :: ANF -> Maybe ANF -- TODO: also make so that "a xor a = Nothing"
+simplifyAnf anf = 
+  let anf' = mapMaybe simplifyAnfTerm anf
+  in if null anf' then Nothing else Just anf'
+
+simplifyPs :: PolySystem -> Maybe PolySystem
+simplifyPs (PS anfs) = PS <$> mapM simplifyAnf anfs
 
 exp2anf :: Exp -> Maybe ANF
-exp2anf e = simplifyAnf <$> makeAnf (distributeAnd $ elimOrNeg e)
+exp2anf e = makeAnf (distributeAnd $ elimOrNeg e)
 
 --- Conversion ANF -> oracle ---
 

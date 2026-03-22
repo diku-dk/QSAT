@@ -32,6 +32,15 @@ project :: CircuitDescriptor -> Vector Double -> Vector Double
 project = undefined
 
 --- cheaty inspection ---
+removeAncilla :: CircuitDescriptor -> Vector Double -> Vector Double
+ -- TODO: add check that ancillas are property zeroed
+removeAncilla cd v = 
+  let 
+    in_space_size = 2 ^ fst cd
+    (input_v, ancilla_v) = VS.splitAt in_space_size v
+  in
+    input_v
+
 seperateSolution :: Vector Double -> ([Int], [Int])
 seperateSolution v =
   let

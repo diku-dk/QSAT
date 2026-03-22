@@ -4,7 +4,7 @@ import ANF ( PolySystem, ps2width, ps2oracle, simplifyPs, maxVar )
 import Verif
 import Test.QuickCheck
 import Eval (evalProgram, zero, scanProgram, hadamard, initial)
-import Measure (vectorize, seperateSolution)
+import Measure (vectorize, seperateSolution, removeAncilla)
 import Grovers (grovers)
 import Gates (CircuitWidth, CircuitDescriptor)
 import Data.List (nub)
@@ -15,9 +15,11 @@ import Data.Vector.Storable (Vector)
 
 groverCheatTest :: PolySystem -> Property
 groverCheatTest ps =
-  let width = ps2width ps
-  in maxVar ps > 0 ==> property $
-    let (solSet1, solSet2) = runGroverCheat width ps in
+  property $
+    let 
+      width = ps2width ps
+      (solSet1, solSet2) = runGroverCheat width ps 
+    in
       case (nub $ verifPS ps <$> solSet1, nub $ verifPS ps <$> solSet2) of
         ([truthVal1], [truthVal2]) -> truthVal1 /= truthVal2
         ([_], _) -> True
@@ -29,7 +31,7 @@ runGroverCheat width ps =
   let oracle = ps2oracle ps
       groversCircuit = grovers width oracle 1
       stateVector = vectorize $ evalProgram groversCircuit $ initial width
-  in (pairMap . map) (padded2bin (uncurry (+) width)) (seperateSolution stateVector)
+  in (pairMap . map) (padded2bin (fst width)) (seperateSolution (removeAncilla width stateVector))
 
 pairMap :: (a -> b) -> (a, a) -> (b, b)
 pairMap f (x, y) = (f x, f y)
