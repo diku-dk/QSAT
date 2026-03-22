@@ -33,6 +33,9 @@ verifPS (PS anfs) bs = all (`verifANF` bs) anfs
 
 --- int to bitstring ---
 
+index2bin :: Int -> Int -> BitString
+index2bin n i = reverse (padded2bin n i)
+
 padded2bin :: Int -> Int -> BitString
 padded2bin n i =
   let unpadded = toBin i

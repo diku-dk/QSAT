@@ -5,12 +5,12 @@ import Test.QuickCheck
 data Atom =
     Cst Bool
   | Var Int
-  deriving(Eq)
+  deriving(Eq, Show)
 
-instance Show Atom where
-  show (Cst True) = "1"
-  show (Cst False) = "0"
-  show (Var n) = "x" ++ show n
+-- instance Show Atom where
+--   show (Cst True) = "1"
+--   show (Cst False) = "0"
+--   show (Var n) = "x" ++ show n
 
 instance Arbitrary Atom where
   arbitrary = sized genAtom

@@ -31,7 +31,7 @@ runGroverCheat width ps =
   let oracle = ps2oracle ps
       groversCircuit = grovers width oracle 1
       stateVector = vectorize $ evalProgram groversCircuit $ initial width
-  in (pairMap . map) (padded2bin (fst width)) (seperateSolution (removeAncilla width stateVector))
+  in (pairMap . map) (index2bin (fst width)) (seperateSolution (removeAncilla width stateVector))
 
 pairMap :: (a -> b) -> (a, a) -> (b, b)
 pairMap f (x, y) = (f x, f y)
